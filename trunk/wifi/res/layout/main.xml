@@ -9,13 +9,29 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:text="" />
-
+<LinearLayout android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        >
     <Button
         android:id="@+id/bt_cadastrarSinais"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Cadastrar Sinais" />
 
+    
+    <Button
+        android:id="@+id/bt_zerarBanco"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Limpar Banco" />
+    
+    <Button
+        android:id="@+id/bt_generate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gerar Id" />
+</LinearLayout>
     <EditText
         android:id="@+id/et_local"
         android:layout_width="match_parent"
@@ -23,8 +39,6 @@
         android:ems="10" 
         android:text="Nome do local"
         >
-
-        <requestFocus />
     </EditText>
 
     <Button

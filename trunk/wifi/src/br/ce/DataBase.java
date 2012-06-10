@@ -13,7 +13,7 @@ import android.util.Log;
 
 public class DataBase extends SQLiteOpenHelper{
 
-    private static final int DATABASE_VERSION = 3;
+    protected static int DATABASE_VERSION = 7;
     private static final String DATABASE_NAME = "wifi";
     private static final String TABLE_NAME = "redes";
    
@@ -44,6 +44,13 @@ public class DataBase extends SQLiteOpenHelper{
         // Create tables again
         onCreate(db);
     }
+	
+	public void dropTable()
+	{
+		for (Localizacao elemento: this.getAllLocalizacao()) {
+			this.deleteLocalizacao(elemento);
+		}
+	}
 	
 	public void addLocalizacao(Localizacao localizacao)
 	{
