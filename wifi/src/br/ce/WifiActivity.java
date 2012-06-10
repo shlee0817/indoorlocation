@@ -1,35 +1,56 @@
 package br.ce;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class WifiActivity extends Activity implements OnClickListener {
 	public static WifiManager wifiManager;
 	public static ScanResult scanResult;
+	public static String SHARED_PREFERENCES = "wifi";
+	public static String URLGenerate = "http://silobocarvalho.s156.eatj.com/IndoorLocation/main?acao=generate";
+	public static String URLAdd = "http://silobocarvalho.s156.eatj.com/IndoorLocation/main?acao=add";
 	DataBase dataBase;
+	Editor editor;
 	Button bt_cadastrarSinais;
+	Button bt_zerarBanco;
 	Button bt_localizar;
+	Button bt_generate;
+	Button bt_generateId;
 	TextView et_local;
 	TextView et_maisforte;
-
+	
+	
+	
+	static final int caseGenerateId = 1;
+	Dialog dialogLogin;
+	Long idApp;
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -38,18 +59,28 @@ public class WifiActivity extends Activity implements OnClickListener {
 		wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
 		TextView texto = (TextView) findViewById(R.id.texto);
 		bt_cadastrarSinais = (Button) findViewById(R.id.bt_cadastrarSinais);
+		bt_zerarBanco = (Button) findViewById(R.id.bt_zerarBanco);
 		bt_localizar = (Button) findViewById(R.id.bt_localizar);
+		bt_generate = (Button) findViewById(R.id.bt_generate);
+		bt_generateId = (Button) findViewById(R.id.bt_generateId);
 		et_local = (TextView) findViewById(R.id.et_local);
 		et_maisforte = (TextView) findViewById(R.id.et_maisforte);
-		
+
 		bt_cadastrarSinais.setOnClickListener(this);
 		bt_localizar.setOnClickListener(this);
+		bt_zerarBanco.setOnClickListener(this);
+		bt_generate.setOnClickListener(this);
 		
-
 		/*
 		 * DADOS DA APLICAÇÃO
 		 */
 
+		SharedPreferences preferences = getSharedPreferences(SHARED_PREFERENCES, 0);
+		editor = preferences.edit();
+		idApp = preferences.getLong("idApp", -1);
+		
+		
+		
 		dataBase = new DataBase(this);
 
 		List<Localizacao> localizacoes = new ArrayList<Localizacao>();
@@ -62,13 +93,33 @@ public class WifiActivity extends Activity implements OnClickListener {
 			bt_localizar.setEnabled(false);
 		}
 	}
-	
+
 	@Override
 	protected void onPause() {
 		Log.d("abili", "entrou onpause, kill app");
 		android.os.Process.killProcess(android.os.Process.myPid());
 	}
 
+	
+	final Handler handlerHttp = new Handler() {
+		public void handleMessage(Message msg) {
+			String response = msg.getData().getString("response");
+			Log.d("pow", response);
+			try{
+			Long id = Long.parseLong(response.trim());
+			editor.putLong("idApp", id);
+			editor.commit();
+			idApp = id;
+			Log.d("appId", "Essa App possui um id: " + id);
+			}catch(Exception e)
+			{
+				Log.d("ErroHTML", "A pagina devolvida pelo servidor é invalida");
+			}
+		}
+	};
+	
+	
+	
 	public void onClick(View v) {
 
 		if (v == bt_cadastrarSinais) {
@@ -93,66 +144,94 @@ public class WifiActivity extends Activity implements OnClickListener {
 			Log.d("Abili", "Botao Localizar");
 
 			List<Localizacao> listLocalizacoesBd = dataBase.getAllLocalizacao();
-			List<Localizacao> listLocalizacoesCapturadas = new ArrayList<Localizacao>();
-
+			Localizacao local = new Localizacao();
+			local.setRede(null);
 			List<ScanResult> scanResults = wifiManager.getScanResults();
 
-			Localizacao voceEstaAqui = null;
-			
-			for (ScanResult scanResult : scanResults) {
-				Localizacao localizacao = new Localizacao();
-
-				localizacao.setRede(scanResult.SSID);
-				localizacao.setSinal(scanResult.level);
-
-				listLocalizacoesCapturadas.add(localizacao);
-			}
-
-			voceEstaAqui = new Localizacao();
-			voceEstaAqui.setSinal(-500);
-			voceEstaAqui.setRede(null);
-
-			for (Localizacao localizacao : listLocalizacoesCapturadas) {
-
-				Log.d("Capturado", localizacao.getRede() + " - " + localizacao.getSinal());
-				for (Localizacao localizacaoBd : listLocalizacoesBd) {
-
-					if (localizacao.getRede().equals(localizacaoBd.getRede())) {
-
-						if (voceEstaAqui.getRede() == null) {
-							voceEstaAqui.setSinal(localizacao.getSinal());
-							voceEstaAqui.setRede(localizacao.getRede());
-
-							voceEstaAqui.setLocalizacao(localizacaoBd
-									.getLocalizacao());
-						}
-
-						// <0, primeiro é mais fraco q o segundo
-						else if (WifiManager
-								.compareSignalLevel(voceEstaAqui.getSinal(),
-										localizacao.getSinal()) < 0) {
-							voceEstaAqui.setSinal(localizacao.getSinal());
-							voceEstaAqui.setRede(localizacao.getRede());
-
-							voceEstaAqui.setLocalizacao(localizacaoBd
-									.getLocalizacao());
-						}
-
+			for (int i = 0; i < scanResults.size(); i++) {
+				for (int j = 0; j < scanResults.size() - 1; j++) {
+					if (WifiManager.compareSignalLevel(
+							scanResults.get(j).level,
+							scanResults.get(j + 1).level) < 0)
+					// <0 o segundo é mais forte, >0 o primeiro é mais forte
+					{
+						ScanResult temp = scanResults.get(j);
+						scanResults.set(j, scanResults.get(j + 1));
+						scanResults.set(j + 1, temp);
 					}
 				}
 			}
-			if(voceEstaAqui == null)
-			{
-				Log.d("mais forte", "NULO");
-				et_maisforte.setText("NULO");
-			}else{
-			Log.d("mais forte-rede", voceEstaAqui.getRede());
-			Log.d("mais forte-sinal", voceEstaAqui.getSinal().toString());
-			et_maisforte.setText("Você está na: " + voceEstaAqui.getLocalizacao() + " - Sinal + forte: " + voceEstaAqui.getRede() + "com sinal: " + voceEstaAqui.getSinal().toString());
-			}
 			
+
+			for (int i = 0; i < scanResults.size(); i++)
+			{
+				for(int k=0; k<listLocalizacoesBd.size(); k++)
+				{
+					if(scanResults.get(i).SSID.equals(listLocalizacoesBd.get(k).getRede()))
+					{
+						local.setLocalizacao(listLocalizacoesBd.get(k).getLocalizacao());
+						local.setRede(listLocalizacoesBd.get(k).getRede());
+						local.setSinal(scanResults.get(i).level);
+						break;
+					}
+				}
+			}
+			if(local.getRede() == null)
+			{
+				Log.d("Falhou", "Vc não pôde ser localizado");
+			}
+			et_maisforte.setText("Local: " + local.getLocalizacao() + " \nRede: " + local.getRede() + " \nSinal: " + local.getSinal());
+			
+			String urlId = URLAdd + "&id=" + idApp;
+			HttpThread httpThread = new HttpThread(handlerHttp, urlId, "", local.getLocalizacao());
+			httpThread.start();
+
+		}else if(v == bt_zerarBanco)
+		{
+			dataBase.dropTable();
+			
+		}else if(v == bt_generate)
+		{
+			dialogLogin = new Dialog(this);
+
+			dialogLogin.setContentView(R.layout.login);
+			dialogLogin.setTitle("Generate Id");
+			
+			dialogLogin.show();
+			
+			bt_generateId = (Button) dialogLogin.findViewById(R.id.bt_generateId);
+			bt_generateId.setOnClickListener(this);
+			    
+		}else if(v == bt_generateId)
+		{
+			TextView et_nome = (TextView) dialogLogin.findViewById(R.id.et_nome);
+		    TextView et_local = (TextView) dialogLogin.findViewById(R.id.et_localGenerateId);
+			
+		    Log.d("pow", "antes de chamar http");
+			HttpThread httpThread = new HttpThread(handlerHttp, URLGenerate, et_nome.getText().toString(), et_local.getText().toString());
+			httpThread.start();
+		    /*Colocar uma confirmação de aguardo da Thread antes de mostrar o Toast*/
+			
+			dialogLogin.dismiss();
+			
+			Toast toast = Toast.makeText(this, "Id Criado com Sucesso!", Toast.LENGTH_LONG);
+			toast.show();
+		}
+
+	}
+	
+	@Override
+	protected Dialog onCreateDialog(int id) {
+		
+		switch (id) {
+		case caseGenerateId:
+			
+			break;
+
+		default:
+			break;
 		}
 		
+		return super.onCreateDialog(id);
 	}
-
 }
