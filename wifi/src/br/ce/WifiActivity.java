@@ -51,6 +51,7 @@ public class WifiActivity extends Activity implements OnClickListener {
 	static final int caseGenerateId = 1;
 	Dialog dialogLogin;
 	Long idApp;
+	String nomeApp = "Indefinido";
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -183,7 +184,7 @@ public class WifiActivity extends Activity implements OnClickListener {
 			et_maisforte.setText("Local: " + local.getLocalizacao() + " \nRede: " + local.getRede() + " \nSinal: " + local.getSinal());
 			
 			String urlId = URLAdd + "&id=" + idApp;
-			HttpThread httpThread = new HttpThread(handlerHttp, urlId, "", local.getLocalizacao());
+			HttpThread httpThread = new HttpThread(handlerHttp, urlId, nomeApp, local.getLocalizacao());
 			httpThread.start();
 
 		}else if(v == bt_zerarBanco)
@@ -208,6 +209,8 @@ public class WifiActivity extends Activity implements OnClickListener {
 		    TextView et_local = (TextView) dialogLogin.findViewById(R.id.et_localGenerateId);
 			
 		    Log.d("pow", "antes de chamar http");
+		    
+		    nomeApp = et_nome.getText().toString();
 			HttpThread httpThread = new HttpThread(handlerHttp, URLGenerate, et_nome.getText().toString(), et_local.getText().toString());
 			httpThread.start();
 		    /*Colocar uma confirmação de aguardo da Thread antes de mostrar o Toast*/
