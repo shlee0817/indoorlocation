@@ -148,8 +148,10 @@ public class WifiActivity extends Activity implements OnClickListener {
 			Localizacao local = new Localizacao();
 			local.setRede(null);
 			List<ScanResult> scanResults = wifiManager.getScanResults();
+			
+			getLocal(listLocalizacoesBd, scanResults);
 
-			for (int i = 0; i < scanResults.size(); i++) {
+			/*for (int i = 0; i < scanResults.size(); i++) {
 				for (int j = 0; j < scanResults.size() - 1; j++) {
 					if (WifiManager.compareSignalLevel(
 							scanResults.get(j).level,
@@ -176,7 +178,7 @@ public class WifiActivity extends Activity implements OnClickListener {
 						break;
 					}
 				}
-			}
+			}*/
 			if(local.getRede() == null)
 			{
 				Log.d("Falhou", "Vc não pôde ser localizado");
@@ -236,5 +238,50 @@ public class WifiActivity extends Activity implements OnClickListener {
 		}
 		
 		return super.onCreateDialog(id);
+	}
+	
+	private Localizacao getLocal(List<Localizacao> bd, List<ScanResult> results) {
+		Localizacao local = new Localizacao();
+		Map<Localizacao, Integer> map = new HashMap<Localizacao, Integer>();
+		Integer aux = 0;
+		for(ScanResult sr : results){
+			for(Localizacao l : bd) {
+				if(aux == 0) {
+					local = l;
+					aux = 1;
+				}
+				else {
+					Integer dif1 = (l.getSinal() * (-1)) - (sr.level *(-1));
+					if(dif1 < 0) {
+						dif1 = dif1*(-1);
+					}
+					Integer dif2 = (local.getSinal() * (-1)) - (sr.level *(-1));
+					if(dif2 < 0) {
+						dif2 = dif2*(-1);
+					}
+					if(dif1 < dif2) {
+						local = l;
+					}
+				}
+			}
+			if(map.containsKey(local)) {
+				map.put(local, map.get(local) +1);
+			}
+			else {
+				map.put(local, 1);
+			}
+		}
+		aux = 0;
+		for(Localizacao l : map.keySet()){
+			if(aux == 0){
+				local = l;
+			}
+			else {
+				if(map.get(l) > map.get(local)) {
+					local = l;
+				}
+			}
+		}
+		return local;
 	}
 }

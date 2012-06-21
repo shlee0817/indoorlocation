@@ -29,4 +29,20 @@ public class Localizacao {
 	public void setLocalizacao(String localizacao) {
 		this.localizacao = localizacao;
 	}
+	
+	public boolean equals(Object other) {
+		if(other instanceof Localizacao) {
+			if(((Localizacao)other).getPk() == this.pk){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public int hashCode(){
+		final int prime = 31;  
+	    int result = 1;  
+	    result = prime * result + this.pk;  
+	    return result;	
+	}
 }
